@@ -15,3 +15,4 @@ Code to reproduce results from Ruegamer, Kolb and Klein (2022)
 * numerical_experiments: Code for Section 4
 * benchmarks: Code for Section 5
 * application: Code for Section 6
+* deepregression: Package implementing the methodology (cloned from [here](https://github.com/neural-structured-additive-learning/deepregression/))
