@@ -8,7 +8,7 @@ library(ggmap)
 library(viridis)
 library(grid)
 library(xtable)
-devtools::load_all("../../deepregression")
+devtools::load_all("../deepregression")
 
 nr_words = 1000
 embedding_size = 100
@@ -205,16 +205,30 @@ nn_big <- function(x) x %>%
   layer_dropout(rate = 0.2) %>%
   layer_dense(64) 
 
-nn_big_top <- function(x) x %>% layer_dense(units=1
-                                            , kernel_initializer = 'zeros'
+nn_big_top <- function(x) x %>% layer_dense(units=1, use_bias = FALSE,
+                                            kernel_initializer = 'zeros'
                                             )
+
+nn_big <- function(x)  x %>% 
+  cnn1() %>%
+  cnn2() %>%
+  cnn3() %>%
+  layer_flatten() %>%
+  layer_dense(128) %>%
+  layer_activation(activation = "relu") %>%
+  layer_batch_normalization() %>%
+  layer_dropout(rate = 0.2) %>%
+  layer_dense(64)  %>% layer_dense(units=1, use_bias = FALSE,
+                                   kernel_initializer = 'zeros'
+  )
 
 nn_fc <- function(x) x %>% 
   layer_dense(units = 16, activation = "relu", name = "fc1") %>% 
   layer_dropout(rate = 0.2) %>%
   layer_dense(units = 4, activation = "relu", name = "fc2") %>% 
   layer_dropout(rate = 0.2) %>%
-  layer_dense(units = 2, activation = "relu", name = "fc3")
+  layer_dense(units = 2, activation = "relu", name = "fc3") %>% 
+  layer_dense(1, use_bias = FALSE)
 
 nn_fc_var <- nn_fc
 
@@ -253,28 +267,27 @@ embd_mod <- function(x) x %>%
                   output_dim = embedding_size) %>%
   # layer_lambda(f = function(x) k_mean(x, axis = 2)) %>%
   # layer_dense(10) %>% 
-  layer_flatten() 
+  layer_flatten() %>% 
+  layer_dense(1, use_bias = FALSE)
 
 
 ############################################################
 
 mod_struct <- deepregression(y = d_train$price, 
                              family = "log_normal",
-                             list_of_formulae = list(
-                               ~1 + te(latitude, longitude, k = c(8,8)) + 
-                                 room_type + s(accommodates) + 
+                             list_of_formulas = list(
+                               ~1 + te(latitude, longitude, k = c(8,8), df = 6) + 
+                                 room_type + s(accommodates, df = 8) + 
                                  bedrooms + beds + 
-                                 s(days_since_last_review) + 
-                                 s(reviews_per_month, k = 25) + 
-                                 s(review_scores_rating), 
-                               ~1 + room_type + te(latitude, longitude, k = c(8,8))), 
+                                 s(days_since_last_review, df = 6) + 
+                                 s(reviews_per_month, k = 25, df = 6) + 
+                                 s(review_scores_rating, df = 8), 
+                               ~1 + room_type + te(latitude, longitude, k = c(8,8), df = 6)), 
                              data = d_train,
                              list_of_deep_models = NULL,
                              optimizer = optimizer_adam(), 
-                             tf_seed = 6,
-                             split_fun = function(x) list(x, nn_big_top),
-                             df = list(list(c(6,6), 8, 6, 6, 8), 
-                                       list(c(6,6))))
+                             tf_seed = 6
+                             )
 
 
 mod_struct %>% fit(epochs = 4000, 
@@ -304,25 +317,23 @@ res_df <- data.frame(model = "structured",
 
 mod_struct_dnn <- deepregression(y = d_train$price, 
                                  family = "log_normal",
-                                 list_of_formulae = list(
-                                   ~1 + te(latitude, longitude, k = c(8,8)) + 
-                                     room_type + s(accommodates) + 
+                                 list_of_formulas = list(
+                                   ~1 + te(latitude, longitude, k = c(8,8), df = 6) + 
+                                     room_type + s(accommodates, df = 8) + 
                                      bedrooms + beds + 
-                                     s(days_since_last_review) + 
-                                     s(reviews_per_month, k = 25) + 
-                                     s(review_scores_rating) + 
+                                     s(days_since_last_review, df = 6) + 
+                                     s(reviews_per_month, k = 25, df = 6) + 
+                                     s(review_scores_rating, df = 8) + 
                                      nn_fc(beds1, beds2, beds3, beds4, beds5, beds6, 
                                            bedrooms1, bedrooms2, bedrooms3, bedrooms4, 
                                            room_typeHotel_room, room_typePrivate_room, 
                                            room_typeShared_room) %OZ% (room_type + bedrooms + beds), 
-                                   ~1 + room_type + te(latitude, longitude, k = c(8,8))), 
+                                   ~1 + room_type + te(latitude, longitude, k = c(8,8), df = 6)), 
                                  data = d_train,
                                  list_of_deep_models = list(nn_fc = nn_fc),
                                  optimizer = optimizer_adam(), 
-                                 tf_seed = 6,
-                                 split_fun = function(x) list(x, nn_big_top),
-                                 df = list(list(c(6,6), 8, 6, 6, 8), 
-                                           list(c(6,6))))
+                                 tf_seed = 6
+)
 
 
 mod_struct_dnn %>% fit(epochs = 4000, 
@@ -350,13 +361,13 @@ res_df <- rbind(res_df,
 
 mod_int <- deepregression(y = d_train$price, 
                           family = "log_normal",
-                          list_of_formulae = list(
-                            ~1 + te(latitude, longitude, k = c(8,8)) + 
-                              room_type + s(accommodates) + 
+                          list_of_formulas = list(
+                            ~1 +  te(latitude, longitude, k = c(8,8), df = 6) + 
+                              room_type + s(accommodates, df = 8) + 
                               bedrooms + beds + 
-                              s(days_since_last_review) + 
-                              s(reviews_per_month, k = 25) + 
-                              s(review_scores_rating) + 
+                              s(days_since_last_review, df = 6) + 
+                              s(reviews_per_month, k = 25, df = 6) + 
+                              s(review_scores_rating, df = 8) + 
                               nn(image)+ 
                               embd_mod(desc) +
                               nn_fc(beds1, beds2, beds3, beds4, beds5, beds6,
@@ -364,18 +375,15 @@ mod_int <- deepregression(y = d_train$price,
                                     room_typeHotel_room, room_typePrivate_room,
                                     room_typeShared_room) %OZ% (room_type + bedrooms + beds)
                             , 
-                            ~1 + room_type + te(latitude, longitude, k = c(8,8))), 
+                            ~1 + room_type + te(latitude, longitude, k = c(8,8), df = 6)), 
                           data = d_train,
-                          image_var = list(image = list(c(200,200,3))),
-                          list_of_deep_models = list(nn = nn_big, 
+                          list_of_deep_models = list(nn = list(nn_big, c(200,200,3)), 
                                                      embd_mod = embd_mod,
                                                      nn_fc = nn_fc
                           ),
                           optimizer = optimizer_adam(lr = 0.0001), 
-                          tf_seed = 6,
-                          split_fun = function(x) list(x, nn_big_top),
-                          df = list(list(c(6,6), 8, 6, 6, 8), 
-                                    list(c(6,6))))
+                          tf_seed = 6
+)
 
 if(file.exists("weights_airbnb_model.hdf5")){
   mod_int$model$load_weights(filepath="weights_airbnb_model.hdf5", by_name = FALSE)
@@ -432,13 +440,13 @@ res_df <- rbind(res_df,
 
 mod_int_woz <- deepregression(y = d_train$price, 
                           family = "log_normal",
-                          list_of_formulae = list(
-                            ~1 + te(latitude, longitude, k = c(8,8)) + 
-                              room_type + s(accommodates) + 
+                          list_of_formulas = list(
+                            ~1 + te(latitude, longitude, k = c(8,8), df = 6) + 
+                              room_type + s(accommodates, df = 8) + 
                               bedrooms + beds + 
-                              s(days_since_last_review) + 
-                              s(reviews_per_month, k = 25) + 
-                              s(review_scores_rating) + 
+                              s(days_since_last_review, df = 6) + 
+                              s(reviews_per_month, k = 25, df = 6) + 
+                              s(review_scores_rating, df = 8) + 
                               nn(image) %OZ% (room_type + bedrooms + beds + 
                                                 te(latitude, longitude, k = c(8,8)) +
                                                 s(accommodates) +
@@ -451,7 +459,7 @@ mod_int_woz <- deepregression(y = d_train$price,
                                     room_typeHotel_room, room_typePrivate_room,
                                     room_typeShared_room) %OZ% (room_type + bedrooms + beds)
                             , 
-                            ~1 + room_type + te(latitude, longitude, k = c(8,8))), 
+                            ~1 + room_type + te(latitude, longitude, k = c(8,8), df = 6)), 
                           data = d_train,
                           image_var = list(image = list(c(200,200,3))),
                           list_of_deep_models = list(nn = nn_big, 
@@ -459,10 +467,8 @@ mod_int_woz <- deepregression(y = d_train$price,
                                                      nn_fc = nn_fc
                           ),
                           optimizer = optimizer_adam(lr = 0.0001), 
-                          tf_seed = 6,
-                          split_fun = function(x) list(x, nn_big_top),
-                          df = list(list(c(6,6), 8, 6, 6, 8), 
-                                    list(c(6,6))))
+                          tf_seed = 6
+)
 
 if(file.exists("weights_airbnb_model_woz.hdf5")){
   
@@ -703,13 +709,13 @@ as.character(qtexts)
 
 mod_struct_dnn_text <- deepregression(y = d_train$price, 
                                       family = "log_normal",
-                                      list_of_formulae = list(
-                                        ~1 + te(latitude, longitude, k = c(8,8)) + 
-                                          room_type + s(accommodates) + 
+                                      list_of_formulas = list(
+                                        ~1 + te(latitude, longitude, k = c(8,8), df = 6) + 
+                                          room_type + s(accommodates, df = 8) + 
                                           bedrooms + beds + 
-                                          s(days_since_last_review) + 
-                                          s(reviews_per_month, k = 25) + 
-                                          s(review_scores_rating) + 
+                                          s(days_since_last_review, df = 6) + 
+                                          s(reviews_per_month, k = 25, df = 6) + 
+                                          s(review_scores_rating, df = 8) + 
                                           embd_mod(desc) %OZ% (room_type + bedrooms + beds + 
                                                                  te(latitude, longitude, k = c(8,8)) +
                                                                  s(accommodates) +
@@ -721,15 +727,13 @@ mod_struct_dnn_text <- deepregression(y = d_train$price,
                                                 room_typeHotel_room, room_typePrivate_room, 
                                                 room_typeShared_room) %OZ% 
                                           (room_type + bedrooms + beds), 
-                                        ~1 + room_type + te(latitude, longitude, k = c(8,8))), 
+                                        ~1 + room_type + te(latitude, longitude, k = c(8,8), df = 6)), 
                                       data = d_train,
                                       list_of_deep_models = list(nn_fc = nn_fc,
                                                                  embd_mod = embd_mod),
                                       optimizer = optimizer_adam(), 
-                                      tf_seed = 6,
-                                      split_fun = function(x) list(x, nn_big_top),
-                                      df = list(list(c(6,6), 8, 6, 6, 8), 
-                                                list(c(6,6))))
+                                      tf_seed = 6
+)
 
 
 mod_struct_dnn_text %>% fit(epochs = 4000, 
@@ -761,17 +765,13 @@ mod_pic <- deepregression(y = d_train$price,
                             ~1 + nn(image), 
                             ~1), 
                           data = d_train,
-                          image_var = list(image = list(c(200,200,3))),
-                          list_of_deep_models = list(nn = nn_big#, 
+                          list_of_deep_models = list(nn = list(nn_big, c(200,200,3))#, 
                                                      #embd_mod = embd_mod,
                                                      # nn_fc = nn_fc#,
                                                      #nn_fc_var = nn_fc_var
                           ),
                           optimizer = optimizer_adam(lr = 0.00001), 
-                          tf_seed = 6,
-                          split_fun = function(x) list(x, nn_big_top)#,
-                          # df = list(list(c(6,6), 8, 6, 6, 8), 
-                          #           list(c(6,6)))
+                          tf_seed = 6
                           )
 
 # freeze_weights(mod_pic$model, from = 1, to = 176)
