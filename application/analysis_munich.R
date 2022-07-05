@@ -390,27 +390,15 @@ if(file.exists("weights_airbnb_model.hdf5")){
   
 }else{
   
-  mod_int$model$get_layer(name="structured_nonlinear_1")$set_weights(
-    mod_struct$model$get_layer(name="structured_nonlinear_1")$get_weights()
-  )
+  layer_names_int <- sapply(mod_int$model$layers, "[[", "name")
+  layer_names_struct <- sapply(mod_struct_dnn$model$layers, "[[", "name")
+  intsec <- intersect(layer_names_int, layer_names_struct)
+  intsec <- intsec[!grepl("input\\_", intsec)]
   
-  mod_int$model$get_layer(name="structured_nonlinear_2")$set_weights(
-    mod_struct$model$get_layer(name="structured_nonlinear_2")$get_weights()
-  )
-  
-  mod_int$model$get_layer(name="fc1")$set_weights(
-    mod_struct_dnn$model$get_layer(name="fc1")$get_weights()
-  )
-  
-  mod_int$model$get_layer(name="fc2")$set_weights(
-    mod_struct_dnn$model$get_layer(name="fc2")$get_weights()
-  )
-  
-  mod_int$model$get_layer(name="fc3")$set_weights(
-    mod_struct_dnn$model$get_layer(name="fc3")$get_weights()
-  )
-  
-  
+  for(n in intsec)
+    mod_int$model$get_layer(name=n)$set_weights(
+      mod_struct_dnn$model$get_layer(name=n)$get_weights()
+    )
   
   mod_int %>% fit(epochs = 5000, 
                   view_metrics = FALSE,
@@ -461,8 +449,7 @@ mod_int_woz <- deepregression(y = d_train$price,
                             , 
                             ~1 + room_type + te(latitude, longitude, k = c(8,8), df = 6)), 
                           data = d_train,
-                          image_var = list(image = list(c(200,200,3))),
-                          list_of_deep_models = list(nn = nn_big, 
+                          list_of_deep_models = list(nn = list(nn_big, c(200,200,3)), 
                                                      embd_mod = embd_mod,
                                                      nn_fc = nn_fc
                           ),
@@ -476,25 +463,15 @@ if(file.exists("weights_airbnb_model_woz.hdf5")){
   
 }else{
   
-  mod_int_woz$model$get_layer(name="structured_nonlinear_1")$set_weights(
-    mod_struct$model$get_layer(name="structured_nonlinear_1")$get_weights()
-  )
+  layer_names_int <- sapply(mod_int_woz$model$layers, "[[", "name")
+  layer_names_struct <- sapply(mod_struct_dnn$model$layers, "[[", "name")
+  intsec <- intersect(layer_names_int, layer_names_struct)
+  intsec <- intsec[!grepl("input\\_", intsec)]
   
-  mod_int_woz$model$get_layer(name="structured_nonlinear_2")$set_weights(
-    mod_struct$model$get_layer(name="structured_nonlinear_2")$get_weights()
-  )
-  
-  mod_int_woz$model$get_layer(name="fc1")$set_weights(
-    mod_struct_dnn$model$get_layer(name="fc1")$get_weights()
-  )
-  
-  mod_int_woz$model$get_layer(name="fc2")$set_weights(
-    mod_struct_dnn$model$get_layer(name="fc2")$get_weights()
-  )
-  
-  mod_int_woz$model$get_layer(name="fc3")$set_weights(
-    mod_struct_dnn$model$get_layer(name="fc3")$get_weights()
-  )
+  for(n in intsec)
+    mod_int_woz$model$get_layer(name=n)$set_weights(
+      mod_struct_dnn$model$get_layer(name=n)$get_weights()
+    )
   
   
   
@@ -525,8 +502,8 @@ res_df <- rbind(res_df,
 
 par(mfrow=c(2,2))
 peplots <- plot(mod_int_woz, type="b", which = 2:5, plot = F)
-pepdata <- do.call("rbind", lapply(peplots[2:5], 
-                                   function(x) data.frame(value = x$value[,1],
+pepdata <- do.call("rbind", lapply(peplots, 
+                                   function(x) data.frame(value = x$value,
                                                           pe = x$partial_effect[,1],
                                                           name = x$org_feature_name)))
 levels(pepdata$name) <- c("Accommodates", "Days since last review", 
@@ -537,11 +514,15 @@ ggplot(pepdata, aes(x = value, y = exp(pe))) +
   geom_point(size=3) + 
   facet_wrap(~name, scales = "free") + 
   theme_bw() + xlab("Feature value") + ylab("Partial multiplicative effect") + 
-  theme(text = element_text(size=16)) + 
-  ggsave(file = "peplots.pdf")
+  theme(text = element_text(size=16))
+ggsave(file = "peplots.pdf")
 
-cbind(mean_effect = coef(mod_int_woz, type = "linear")$location,
-      scale_effect = c(exp(coef(mod_int_woz, type = "linear")$scale), rep(0,10))) %>% 
+coefs_mean <- coef(mod_int_woz, type = "linear", which_param = 1)
+coefs_sd <- coef(mod_int_woz, type = "linear", which_param = 2)
+
+cbind(mean_effect = unlist(coefs_mean),
+      scale_effect = c(exp(unlist(coefs_sd))[1:3], 
+                       rep(0,10),exp(unlist(coefs_sd)[4]))) %>% exp %>% 
   xtable()
 plot(mod_int_woz, which_param = 2)
 
@@ -550,9 +531,11 @@ plot(log(fitted_vals),log(d_train$price))
 abline(0,1,col="red")
 
 
-
-pe_te <- get_partial_effect(mod_int_woz, name = "latitude", newdata = d)
-pe_te2 <- get_partial_effect(mod_int_woz, name = "latitude", newdata = d, which_param=2)
+# FIXME
+pe_te <- get_partial_effect(mod_int_woz, name = "te(latitude, longitude, k = c(8, 8), df = 6)", 
+                            newdata = d)
+pe_te2 <- get_partial_effect(mod_int_woz, name = "te(latitude, longitude, k = c(8, 8), df = 6)", 
+                             newdata = d, which_param=2)
 prices_loc <- cbind(price = pe_te[,1], variance = pe_te2[,1], d %>% select(latitude, longitude))
 
 #####
@@ -577,7 +560,7 @@ ggmap(myMap) + # xlab("Longitude") + ylab("Latitude") +
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank(),
         legend.position = "bottom",
-        legend.key.width=unit(1.2,"cm")) + 
+        legend.key.width=unit(1.2,"cm"))
   ggsave(file = "munich.pdf")
 
 ggmap(myMap) + # xlab("Longitude") + ylab("Latitude") + 
@@ -595,7 +578,7 @@ ggmap(myMap) + # xlab("Longitude") + ylab("Latitude") +
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank(),
         legend.position = "bottom",
-        legend.key.width=unit(1.2,"cm")) + 
+        legend.key.width=unit(1.2,"cm"))  
   ggsave(file = "munich_scale.pdf")
 
 ### image effect
@@ -680,7 +663,7 @@ ggplot(data.frame(predval = (pred_images)), aes(x=predval)) +
   annotation_custom(piclist[[5]], 
                     xmin=(vals_pics[5])-size_half-10, 
                     xmax=(vals_pics[5])+size_half, 
-                    ymin=ymin, ymax=ymax) + theme_bw() + 
+                    ymin=ymin, ymax=ymax) + theme_bw() 
   ggsave(file = "pic_effect.pdf")
   
 
@@ -761,7 +744,7 @@ res_df <- rbind(res_df,
 
 mod_pic <- deepregression(y = d_train$price, 
                           family = "log_normal",
-                          list_of_formulae = list(
+                          list_of_formulas = list(
                             ~1 + nn(image), 
                             ~1), 
                           data = d_train,
@@ -817,3 +800,4 @@ res_df <- rbind(res_df,
 
 res_df %>% xtable()
 
+saveRDS(res_df, file="results_comparison.RDS")

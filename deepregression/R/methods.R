@@ -705,10 +705,11 @@ log_score <- function(
 #' @param name name of partial effect
 #' @param param_nr distribution parameter number
 #' @param postfixes character (vector) appended to layer name
+#' @param ... passed to weight name functions
 #' @return weight matrix
 #' 
 #' 
-get_weight_by_name <- function(mod, name, param_nr=1, postfixes="")
+get_weight_by_name <- function(mod, name, param_nr=1, postfixes="", ...)
 {
 
   # check for shared layer  
@@ -722,9 +723,9 @@ get_weight_by_name <- function(mod, name, param_nr=1, postfixes="")
   }
   # names <- get_mod_names(mod)
   if(length(this_name)>1){
-    wgts <- lapply(this_name, function(name) get_weight_by_opname(mod, name))
+    wgts <- lapply(this_name, function(name) get_weight_by_opname(mod, name, ...))
   }else{
-    wgts <- get_weight_by_opname(mod, this_name)
+    wgts <- get_weight_by_opname(mod, this_name, ...)
   }
   return(wgts)
   
