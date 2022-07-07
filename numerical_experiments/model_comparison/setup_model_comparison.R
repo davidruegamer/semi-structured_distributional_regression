@@ -64,7 +64,7 @@ fit_all_models <- function(formula_list,
                       family = this_family[["deepregression"]]),
                  args_deepregression)
   
-  if(this_family$Family=="gamma") args_list <- c(args_list, list(learning_rate=0.001))
+  # if(this_family$Family=="gamma") args_list <- c(args_list, list(learning_rate=0.001))
   
   start_time <- Sys.time()
   mod <- do.call("deepregression", args_list)
@@ -79,7 +79,7 @@ fit_all_models <- function(formula_list,
                 validation_split = NULL)
   }else{
     mod %>% fit(epochs = iterations,
-                patience = 25,
+                patience = 50,
                 early_stopping  = TRUE,
                 view_metrics = FALSE,
                 validation_split = 0.2)
@@ -96,7 +96,10 @@ fit_all_models <- function(formula_list,
                                 as.matrix(this_dist %>% tfd_mean()),
                                 as.matrix(this_dist %>% tfd_stddev())))
   )
-  coef <- mod %>% coef()
+  coef <- lapply(1:2, function(i){
+    cf <- mod %>% coef(which_param = i, type="linear")
+    return(c(cf[length(cf)], cf[1:(length(cf)-1)]))
+    })
   plotdata <- lapply(1:2, function(i) mod %>% plot(only_data=TRUE, which_param=i))
   return_list$deepregression <- list(logscore = logscore,
                                      coef = coef,
@@ -343,7 +346,7 @@ calculate_results <- function(all_fits, data)
   
   ################### RMSE COEF #################
   rmse1_coef_deepregression <- true_coef_rmse_fun(
-    all_fits$deepregression$coef[[1]][[1]][,1][1:length(true_coef1)],
+    unlist(all_fits$deepregression$coef[[1]][1:length(true_coef1)]),
     true_coef1)
   rmse1_coef_bamlss <- true_coef_rmse_fun(
     all_fits$bamlss$coef[[1]],
@@ -356,7 +359,7 @@ calculate_results <- function(all_fits, data)
     true_coef1)
   
   rmse2_coef_deepregression <- true_coef_rmse_fun(
-    all_fits$deepregression$coef[[2]][[1]][,1][1:length(true_coef2)],
+    unlist(all_fits$deepregression$coef[[2]][1:length(true_coef2)]),
     true_coef2)
   rmse2_coef_bamlss <- true_coef_rmse_fun(
     all_fits$bamlss$coef[[2]],
