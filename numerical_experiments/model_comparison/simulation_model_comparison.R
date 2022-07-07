@@ -84,9 +84,7 @@ for(i in 1:nrow(settings)){
                                    data = this_data[data$train,],
                                    newdata = this_data[data$test,],
                                    distribution = this_family,
-                                   iterations = ifelse(set$n==300, 
-                                                       600, 
-                                                       6000),# / (set$family=="gamma")*2,
+                                   iterations = 6000L,
                                    use_cv_dr=FALSE)
     )
     if(class(all_fits)=="try-error") return(NULL)

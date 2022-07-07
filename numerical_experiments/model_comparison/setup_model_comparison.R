@@ -74,12 +74,16 @@ fit_all_models <- function(formula_list,
                                           print_folds = FALSE,
                                           plot = FALSE)
     print(stop_here <- stop_iter_cv_result(cvr_ddr))
+    mod %>% fit(epochs = stop_here,
+                view_metrics = FALSE,
+                validation_split = NULL)
   }else{
-    stop_here <- iterations
+    mod %>% fit(epochs = iterations,
+                patience = 25,
+                early_stopping  = TRUE,
+                view_metrics = FALSE,
+                validation_split = 0.2)
   }
-  mod %>% fit(epochs = stop_here,
-              view_metrics = FALSE,
-              validation_split = NULL)
   time_elapsed <- difftime(Sys.time(), start_time, units = "sec")
   if(verbose) cat("Done in", round(time_elapsed, 2), "seconds.\n")
   
