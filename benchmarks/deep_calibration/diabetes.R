@@ -1,12 +1,11 @@
+library(parallel)
+
 # load data saved in python with specific random_state
 
 y_train <- read.csv("data/diabetes/y_train_diabetes.csv", header=F)
 y_test <- read.csv("data/diabetes/y_test_diabetes.csv", header=F)
 x_train <- read.csv("data/diabetes/x_train_diabetes.csv", header=F)
 x_test <- read.csv("data/diabetes/x_test_diabetes.csv", header=F)
-
-# load deepregression
-library(deepregression)
 
 # set random seed
 set.seed(42)
@@ -37,7 +36,10 @@ deep_mod <- function(x) x %>%
   layer_dense(units = 1, activation = "linear")
 
 ### SSDR (w/ OZ)
-for(sim_iteration in 1:nrsims){
+res1 <- mclapply(1:nrsims, function(sim_iteration){
+  
+  # load deepregression
+  library(deepregression)
   
   mod_deep <- deepregression(y = y_train$V1, 
                              list_of_formulas = list(loc = as.formula(form_mu),
@@ -78,10 +80,10 @@ for(sim_iteration in 1:nrsims){
   
   res[sim_iteration, ] <- c(ll, mse, as.numeric(difftime(et,st,units="mins")))
   
-}
+}, mc.cores = nrsims)
 
 # get performance and times
-res1 <- apply(res, 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
+res1 <- apply(do.call("rbind",res1), 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
 # LL        MSE      time
 # [1,] 5.332936847 2484.84365 11.730768
 # [2,] 0.004359729   22.20506  1.029578
@@ -89,7 +91,10 @@ res1 <- apply(res, 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
 res = data.frame(LL = NA, MSE = NA, time = NA)
 
 ### SSDR (w/o OZ)
-for(sim_iteration in 1:nrsims){
+res2 <- mclapply(1:nrsims, function(sim_iteration){
+  
+  # load deepregression
+  library(deepregression)
   
   mod_deep <- deepregression(y = y_train$V1, 
                              list_of_formulas = list(loc = as.formula(form_mu),
@@ -130,16 +135,10 @@ for(sim_iteration in 1:nrsims){
   
   res[sim_iteration, ] <- c(ll, mse, as.numeric(difftime(et,st,units="mins")))
   
-}
+}, mc.cores = nrsims)
 
 # get performance and times
-res2 <- apply(res, 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
-              
-# LL        MSE      time
-# [1,] 5.332936847 2484.84365 11.730768
-# [2,] 0.004359729   22.20506  1.029578
-
-res = data.frame(LL = NA, MSE = NA, time = NA)
+res2 <- apply(do.call("rbind",res2), 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
 
 form_mu <- paste0("~ 1", 
                   # "+",
@@ -151,7 +150,10 @@ form_mu <- paste0("~ 1",
                   paste(Vs, collapse=", "), ")")
 
 ### DNN
-for(sim_iteration in 1:nrsims){
+res3 <- mclapply(1:nrsims, function(sim_iteration){
+  
+  # load deepregression
+  library(deepregression)
   
   mod_deep <- deepregression(y = y_train$V1, 
                              list_of_formulas = list(loc = as.formula(form_mu),
@@ -190,10 +192,10 @@ for(sim_iteration in 1:nrsims){
   
   res[sim_iteration, ] <- c(ll, mse, as.numeric(difftime(et,st,units="mins")))
   
-}
+}, mc.cores = nrsims)
 
 # get performance and times
-res3 <- apply(res, 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
+res3 <- apply(do.call("rbind",res3), 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
 # LL        MSE      time
 # [1,] 5.332936847 2484.84365 11.730768
 # [2,] 0.004359729   22.20506  1.029578

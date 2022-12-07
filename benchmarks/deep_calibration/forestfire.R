@@ -1,3 +1,5 @@
+library(parallel)
+
 ff <- read.csv("data/forestfires/forestfires.csv")
 # transform outcome as described in 
 # the repository (https://archive.ics.uci.edu/ml/datasets/forest+fires)
@@ -13,9 +15,6 @@ train <- ff[index_train,]
 test <- ff[setdiff(1:nrow(ff), index_train),]
 y_train <- train$area
 y_test <- test$area
-
-# load deepregression
-library(deepregression)
 
 # define measures
 
@@ -61,7 +60,10 @@ deep_mod2 <- function(x) x %>%
   layer_dense(units = 1, activation = "linear")
 
 ### SSDR
-for(sim_iteration in 1:nrsims){
+res1 <- mclapply(1:nrsims, function(sim_iteration){
+  
+  # load deepregression
+  library(deepregression)
   
   mod_deep <- deepregression(y = y_train, 
                              list_of_formulas = list(loc = as.formula(form_mu),
@@ -101,10 +103,10 @@ for(sim_iteration in 1:nrsims){
   
   res[sim_iteration, ] <- c(ll, mse, as.numeric(difftime(et,st,units="mins")))
   
-}
+}, mc.cores = nrsims)
 
 # get performance and times
-res1 <- apply(res, 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
+res1 <- apply(do.call("rbind",res1), 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
 # LL        MSE       time
 # [1,] 1.753718152 1.95265084 12.4660117
 # [2,] 0.006806554 0.01573052  0.5644636
@@ -112,7 +114,10 @@ res1 <- apply(res, 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
 res = data.frame(LL = NA, MSE = NA, time = NA)
 
 ### SSDR (w/o orthog)
-for(sim_iteration in 1:nrsims){
+res2 <- mclapply(1:nrsims, function(sim_iteration){
+  
+  # load deepregression
+  library(deepregression)
   
   mod_deep <- deepregression(y = y_train, 
                              list_of_formulas = list(loc = as.formula(form_mu),
@@ -152,10 +157,10 @@ for(sim_iteration in 1:nrsims){
   
   res[sim_iteration, ] <- c(ll, mse, as.numeric(difftime(et,st,units="mins")))
   
-}
+}, mc.cores = nrsims)
 
 # get performance and times
-res2 <- apply(res, 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
+res2 <- apply(do.call("rbind",res2), 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
 # LL        MSE       time
 # [1,] 1.753718152 1.95265084 12.4660117
 # [2,] 0.006806554 0.01573052  0.5644636
@@ -168,7 +173,10 @@ form_mu <- paste0("~ 1",
 
 res = data.frame(LL = NA, MSE = NA, time = NA)
 
-for(sim_iteration in 1:nrsims){
+res3 <- mclapply(1:nrsims, function(sim_iteration){
+  
+  # load deepregression
+  library(deepregression)
   
   mod_deep <- deepregression(y = y_train, 
                              list_of_formulas = list(loc = as.formula(form_mu),
@@ -206,10 +214,10 @@ for(sim_iteration in 1:nrsims){
   
   res[sim_iteration, ] <- c(ll, mse, as.numeric(difftime(et,st,units="mins")))
   
-}
+}, mc.cores = nrsims)
 
 # get performance and times
-res3 <- apply(res, 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
+res3 <- apply(do.call("rbind",res3), 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
 
 write.csv(cbind(as.data.frame(rbind(res1,res2,res3)), method=rep(c("ssdrw","ssdrwo","dnn"), each=2)), 
           file="results_forestf.csv")
