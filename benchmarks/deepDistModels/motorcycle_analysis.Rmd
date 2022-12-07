@@ -4,7 +4,7 @@ output: pdf_document
 ---
 
 ```{r, echo=FALSE, message=FALSE}
-devtools::load_all("../../deepregression")
+library(deepregression)
 ```
 
 ```{r}
@@ -24,7 +24,7 @@ deep_mod <- function(x) x %>%
 
 ```
 
-## Fit SDDL
+## Fit SSDR
 
 ```{r pressure, echo=FALSE, cache=TRUE}
 set.seed(42)

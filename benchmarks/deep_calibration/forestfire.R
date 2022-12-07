@@ -15,13 +15,14 @@ y_train <- train$area
 y_test <- test$area
 
 # load deepregression
-devtools::load_all("../../deepregression")
+library(deepregression)
 
 # define measures
 
 res = data.frame(LL = NA, MSE = NA, time = NA)
 
 nrsims <- 20
+max_epochs <- 2000
 
 # train <- model.matrix(~ 0 + ., data = train)
 # test <- model.matrix(~ 0 + ., data = test)
@@ -32,8 +33,8 @@ nrsims <- 20
 Vs <- setdiff(colnames(train),"area")
 
 form_mu <- paste0("~ 1", 
-                  #  " + ", #
-                  # paste(Vs, collapse=" + "), 
+                   " + ", #
+                  paste(Vs, collapse=" + "),
                   #"+",
                   # "s(",
                   # paste(Vs[-1*c(1:20,28)], collapse=") + s("), ")", 
@@ -59,7 +60,7 @@ deep_mod2 <- function(x) x %>%
   # layer_dense(units = 4, activation = "tanh") %>%
   layer_dense(units = 1, activation = "linear")
 
-
+### SSDR
 for(sim_iteration in 1:nrsims){
   
   mod_deep <- deepregression(y = y_train, 
@@ -68,17 +69,19 @@ for(sim_iteration in 1:nrsims){
                              list_of_deep_models = list(deep_mu = deep_mod, 
                                                         deep_sig = deep_mod2),
                              data = as.data.frame(train),
-                             family = "normal"
+                             family = "normal",
+                             orthog_options = orthog_control(orthogonalize = TRUE)
                              )
   
   st <- Sys.time()
   
-  cvres <- mod_deep %>% cv(epochs = 2000)
+  cvres <- mod_deep %>% cv(epochs = max_epochs)
   
   (ep <- stop_iter_cv_result(cvres))
   
   mod_deep %>% fit(epochs = ep, 
-                   verbose = FALSE, view_metrics = FALSE,
+                   verbose = FALSE, 
+                   view_metrics = FALSE,
                    validation_split = NULL)
   
   et <- Sys.time()
@@ -101,7 +104,112 @@ for(sim_iteration in 1:nrsims){
 }
 
 # get performance and times
-apply(res, 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
+res1 <- apply(res, 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
 # LL        MSE       time
 # [1,] 1.753718152 1.95265084 12.4660117
 # [2,] 0.006806554 0.01573052  0.5644636
+
+res = data.frame(LL = NA, MSE = NA, time = NA)
+
+### SSDR (w/o orthog)
+for(sim_iteration in 1:nrsims){
+  
+  mod_deep <- deepregression(y = y_train, 
+                             list_of_formulas = list(loc = as.formula(form_mu),
+                                                     scale = as.formula(form_sig)),
+                             list_of_deep_models = list(deep_mu = deep_mod, 
+                                                        deep_sig = deep_mod2),
+                             data = as.data.frame(train),
+                             family = "normal",
+                             orthog_options = orthog_control(orthogonalize = FALSE)
+  )
+  
+  st <- Sys.time()
+  
+  cvres <- mod_deep %>% cv(epochs = max_epochs)
+  
+  (ep <- stop_iter_cv_result(cvres))
+  
+  mod_deep %>% fit(epochs = ep, 
+                   verbose = FALSE, 
+                   view_metrics = FALSE,
+                   validation_split = NULL)
+  
+  et <- Sys.time()
+  
+  pred <- mod_deep %>% predict(as.data.frame(test))
+  this_dist <- mod_deep %>% get_distribution(as.data.frame(test), force_float = T)
+  
+  log_score_fun <- function(y,m,s) dnorm(y,m,s,log=T)
+  
+  (ll <- -mean(
+    do.call(log_score_fun, list(y_test, 
+                                as.matrix(this_dist %>% tfd_mean()),
+                                as.matrix(this_dist %>% tfd_stddev())))
+  ))
+  
+  (mse <- (mean((pred-y_test)^2)))
+  
+  res[sim_iteration, ] <- c(ll, mse, as.numeric(difftime(et,st,units="mins")))
+  
+}
+
+# get performance and times
+res2 <- apply(res, 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
+# LL        MSE       time
+# [1,] 1.753718152 1.95265084 12.4660117
+# [2,] 0.006806554 0.01573052  0.5644636
+
+### DNN only
+
+form_mu <- paste0("~ 1",
+                  " + deep_mu(",
+                  paste(Vs, collapse=", "), ")")
+
+res = data.frame(LL = NA, MSE = NA, time = NA)
+
+for(sim_iteration in 1:nrsims){
+  
+  mod_deep <- deepregression(y = y_train, 
+                             list_of_formulas = list(loc = as.formula(form_mu),
+                                                     scale = ~1),
+                             list_of_deep_models = list(deep_mu = deep_mod),
+                             data = as.data.frame(train),
+                             family = "normal"
+  )
+  
+  st <- Sys.time()
+  
+  cvres <- mod_deep %>% cv(epochs = max_epochs)
+  
+  (ep <- stop_iter_cv_result(cvres))
+  
+  mod_deep %>% fit(epochs = ep, 
+                   verbose = FALSE, 
+                   view_metrics = FALSE,
+                   validation_split = NULL)
+  
+  et <- Sys.time()
+  
+  pred <- mod_deep %>% predict(as.data.frame(test))
+  this_dist <- mod_deep %>% get_distribution(as.data.frame(test), force_float = T)
+  
+  log_score_fun <- function(y,m,s) dnorm(y,m,s,log=T)
+  
+  (ll <- -mean(
+    do.call(log_score_fun, list(y_test, 
+                                as.matrix(this_dist %>% tfd_mean()),
+                                as.matrix(this_dist %>% tfd_stddev())))
+  ))
+  
+  (mse <- (mean((pred-y_test)^2)))
+  
+  res[sim_iteration, ] <- c(ll, mse, as.numeric(difftime(et,st,units="mins")))
+  
+}
+
+# get performance and times
+res3 <- apply(res, 2, function(x) c(mean(x, na.rm=T), sd(x, na.rm=T)))
+
+write.csv(cbind(as.data.frame(rbind(res1,res2,res3)), method=rep(c("ssdrw","ssdrwo","dnn"), each=2)), 
+          file="results_forestf.csv")
