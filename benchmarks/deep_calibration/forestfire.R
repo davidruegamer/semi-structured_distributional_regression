@@ -50,7 +50,7 @@ form_sig <- paste0("~ 1",
                    )
 
 deep_mod <- function(x) x %>% 
-  layer_dense(units = 16, activation = "tanh", use_bias = FALSE) %>%
+  layer_dense(units = 4, activation = "tanh", use_bias = FALSE) %>%
   layer_dense(units = 4, activation = "tanh") %>%
   layer_dense(units = 1, activation = "linear")
 

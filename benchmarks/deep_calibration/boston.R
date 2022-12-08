@@ -18,10 +18,10 @@ max_epochs <- 2000
 
 Vs <- paste0("V",1:13)
 form_mu <- paste0("~ 1 ", 
-                  # "+",
-                  # paste(Vs, collapse=" + "),
-                  " + s(",
-                  paste(Vs[c(-4,-9)], collapse=") + s("), ")",
+                  "+",
+                  paste(Vs, collapse=" + "),
+                  # " + s(",
+                  # paste(Vs[c(-4,-9)], collapse=") + s("), ")",
                   "+ deep_mu(",
                   paste(Vs, collapse=", "), ")")
 

@@ -18,11 +18,11 @@ nrsims <- 20
 max_epochs <- 4000
 
 Vs <- paste0("V",1:10)
-form_mu <- paste0("~ 1 + s(V3)", 
+form_mu <- paste0("~ 1",# + s(V3)", 
                   # "+",
                   # paste(Vs, collapse=" + "),
-                  #" + s(",
-                  #paste(Vs[c(-2)], collapse=") + s("), ")", 
+                  " + s(",
+                  paste(Vs[c(-2)], collapse=") + s("), ")",
                   "+ ",
                   " dmu(",
                   paste(Vs, collapse=", "), ")")
@@ -32,7 +32,7 @@ form_sig <- paste0("~ 1 + ", "dsig(",
 
 deep_mod <- function(x) x %>% 
   #layer_dense(units = 16, activation = "tanh", use_bias = FALSE) %>%
-  layer_dense(units = 4, activation = "tanh") %>% 
+  layer_dense(units = 16, activation = "tanh") %>% 
   layer_dense(units = 1, activation = "linear")
 
 ### SSDR (w/ OZ)
