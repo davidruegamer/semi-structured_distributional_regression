@@ -14,12 +14,12 @@ set.seed(42)
 res = data.frame(LL = NA, MSE = NA, time = NA)
 
 nrsims <- 20
-max_epochs <- 1000
+max_epochs <- 2000
 
 Vs <- paste0("V",1:13)
 form_mu <- paste0("~ 1 ", 
-                  "+",
-                  paste(Vs, collapse=" + "),
+                  # "+",
+                  # paste(Vs, collapse=" + "),
                   " + s(",
                   paste(Vs[c(-4,-9)], collapse=") + s("), ")",
                   "+ deep_mu(",

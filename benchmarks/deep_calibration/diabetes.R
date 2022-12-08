@@ -15,7 +15,7 @@ set.seed(42)
 res = data.frame(LL = NA, MSE = NA, time = NA)
 
 nrsims <- 20
-max_epochs <- 2000
+max_epochs <- 4000
 
 Vs <- paste0("V",1:10)
 form_mu <- paste0("~ 1 + s(V3)", 

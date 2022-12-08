@@ -17,7 +17,7 @@ test <- airfoil[setdiff(1:nrow(airfoil), index_train),]
 res = data.frame(LL = NA, MSE = NA, time = NA)
 
 nrsims <- 20
-max_epochs <- 1000
+max_epochs <- 2000
 
 Vs <- paste0("V",1:5)
 form_mu <- paste0("~ 1",
