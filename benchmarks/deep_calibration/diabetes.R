@@ -15,14 +15,14 @@ set.seed(42)
 res = data.frame(LL = NA, MSE = NA, time = NA)
 
 nrsims <- 20
-max_epochs <- 4000
+max_epochs <- 3000
 
 Vs <- paste0("V",1:10)
-form_mu <- paste0("~ 1",# + s(V3)", 
+form_mu <- paste0("~ 1 + s(V3)", 
                   # "+",
                   # paste(Vs, collapse=" + "),
-                  " + s(",
-                  paste(Vs[c(-2)], collapse=") + s("), ")",
+                  # " + s(",
+                  # paste(Vs[c(-2)], collapse=") + s("), ")",
                   "+ ",
                   " dmu(",
                   paste(Vs, collapse=", "), ")")
@@ -31,8 +31,13 @@ form_sig <- paste0("~ 1 + ", "dsig(",
                    paste(Vs, collapse=", "), ")")
 
 deep_mod <- function(x) x %>% 
-  #layer_dense(units = 16, activation = "tanh", use_bias = FALSE) %>%
+  layer_dense(units = 16, activation = "tanh", use_bias = FALSE) %>%
   layer_dense(units = 16, activation = "tanh") %>% 
+  layer_dense(units = 1, activation = "linear")
+
+deep_mod2 <- function(x) x %>% 
+  #layer_dense(units = 16, activation = "tanh", use_bias = FALSE) %>%
+  # layer_dense(units = 16, activation = "tanh") %>% 
   layer_dense(units = 1, activation = "linear")
 
 ### SSDR (w/ OZ)
@@ -40,16 +45,18 @@ res1 <- mclapply(1:nrsims, function(sim_iteration){
   
   # load deepregression
   library(deepregression)
+  library(deepoptim)
   
   mod_deep <- deepregression(y = y_train$V1, 
                              list_of_formulas = list(loc = as.formula(form_mu),
                                                      scale = as.formula(form_sig)),
                              list_of_deep_models = list(dmu = deep_mod, 
-                                                        dsig = deep_mod),
+                                                        dsig = deep_mod2),
                              data = x_train,
                              family = "normal",
                              orthog_options = orthog_control(orthogonalize = TRUE),
-                             tf_seed = sim_iteration
+                             tf_seed = sim_iteration,
+                             optimizer = optimizer_alig(maxlr = 1e-1, mom = 0.9)
                              )
   
   st <- Sys.time()
@@ -96,6 +103,7 @@ res2 <- mclapply(1:nrsims, function(sim_iteration){
   
   # load deepregression
   library(deepregression)
+  library(deepoptim)
   
   mod_deep <- deepregression(y = y_train$V1, 
                              list_of_formulas = list(loc = as.formula(form_mu),
@@ -105,7 +113,8 @@ res2 <- mclapply(1:nrsims, function(sim_iteration){
                              data = x_train,
                              family = "normal",
                              orthog_options = orthog_control(orthogonalize = FALSE),
-                             tf_seed = sim_iteration
+                             tf_seed = sim_iteration,
+                             optimizer = optimizer_alig(maxlr = 1e-1, mom = 0.9)
   )
   
   st <- Sys.time()
@@ -156,6 +165,7 @@ res3 <- mclapply(1:nrsims, function(sim_iteration){
   
   # load deepregression
   library(deepregression)
+  library(deepoptim)
   
   mod_deep <- deepregression(y = y_train$V1, 
                              list_of_formulas = list(loc = as.formula(form_mu),
@@ -163,7 +173,8 @@ res3 <- mclapply(1:nrsims, function(sim_iteration){
                              list_of_deep_models = list(dmu = deep_mod),
                              data = x_train,
                              family = "normal",
-                             tf_seed = sim_iteration
+                             tf_seed = sim_iteration,
+                             optimizer = optimizer_alig(maxlr = 1e-1, mom = 0.9)
   )
   
   st <- Sys.time()

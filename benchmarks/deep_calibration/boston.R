@@ -33,8 +33,8 @@ form_sig <- paste0("~ 1",
 
 deep_mod <- function(x) x %>% 
   layer_dense(units = 32, activation = "tanh", use_bias = FALSE) %>%
-  layer_dense(units = 16, activation = "tanh") %>% 
-  layer_dense(units = 4, activation = "tanh") %>% 
+  layer_dense(units = 32, activation = "tanh") %>% 
+  layer_dense(units = 32, activation = "tanh") %>% 
   layer_dense(units = 1, activation = "linear")
 
 deep_mod2 <- function(x) x %>% 
@@ -46,6 +46,7 @@ res1 <- mclapply(1:nrsims, function(sim_iteration){
   
   # load deepregression
   library(deepregression)
+  library(deepoptim)
   
   mod_deep <- deepregression(y = y_train$V1, 
                              list_of_formulas = list(loc = as.formula(form_mu),
@@ -55,7 +56,8 @@ res1 <- mclapply(1:nrsims, function(sim_iteration){
                              data = x_train,
                              family = "normal",
                              orthog_options = orthog_control(orthogonalize = TRUE),
-                             tf_seed = sim_iteration
+                             tf_seed = sim_iteration,
+                             optimizer = optimizer_alig(maxlr = 1e-1, mom = 0.9)
                              )
   
   st <- Sys.time()
