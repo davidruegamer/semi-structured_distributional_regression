@@ -48,7 +48,8 @@ res1 <- mclapply(1:nrsims, function(sim_iteration){
                                                         dsig = deep_mod),
                              data = x_train,
                              family = "normal",
-                             orthog_options = orthog_control(orthogonalize = TRUE)
+                             orthog_options = orthog_control(orthogonalize = TRUE),
+                             tf_seed = sim_iteration
                              )
   
   st <- Sys.time()
@@ -103,7 +104,8 @@ res2 <- mclapply(1:nrsims, function(sim_iteration){
                                                         dsig = deep_mod),
                              data = x_train,
                              family = "normal",
-                             orthog_options = orthog_control(orthogonalize = FALSE)
+                             orthog_options = orthog_control(orthogonalize = FALSE),
+                             tf_seed = sim_iteration
   )
   
   st <- Sys.time()
@@ -160,7 +162,8 @@ res3 <- mclapply(1:nrsims, function(sim_iteration){
                                                      scale = ~1),
                              list_of_deep_models = list(dmu = deep_mod),
                              data = x_train,
-                             family = "normal"
+                             family = "normal",
+                             tf_seed = sim_iteration
   )
   
   st <- Sys.time()
